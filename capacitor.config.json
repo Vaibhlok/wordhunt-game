@@ -1,5 +1,3 @@
-{
-  "appId": "com.vaibhav.wordhunt",
-  "appName": "Word Hunt",
-  "webDir": "."
-}
+{"appId": "com.vaibhav.wordhunt",
+"appName": "Word Hunt",
+"webDir":"."}
