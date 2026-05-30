@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Word Hunt – Swipe & Find | Infinite Levels</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a3c2c 0%, #0e2a1f 100%);
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255,255,240,0.95);
+            border-radius: 64px 64px 48px 48px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .game-header {
+            background: #f7b05e;
+            padding: 20px 24px 16px;
+            text-align: center;
+            color: #2d1b0c;
+            border-bottom: 4px solid #e0912a;
+        }
+
+        .level-badge {
+            font-size: 0.9rem;
+            font-weight: bold;
+            background: #2d1b0c;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 60px;
+            color: #ffdd99;
+            letter-spacing: 1px;
+        }
+
+        .score-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 8px;
+        }
+
+        .score-box {
+            background: #2e241f;
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: #ffcd94;
+            font-weight: bold;
+        }
+
+        .score-box span {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #ffe5b4;
+            margin-right: 6px;
+        }
+
+        .found-counter {
+            background: #1e3a2f;
+            padding: 8px 18px;
+            border-radius: 40px;
+            color: #c9f0e1;
+            font-weight: bold;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 28px 20px 20px;
+            background: #fef7e0;
+        }
+
+        .cell {
+            aspect-ratio: 1 / 1;
+            background: #fff6e8;
+            background-image: radial-gradient(circle at 35% 30%, rgba(255,245,215,0.8) 2%, transparent 2.5%);
+            background-size: 18px 18px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.1rem;
+            font-weight: 800;
+            font-family: 'Montserrat', monospace;
+            color: #2c4727;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 10px 0 #b59a6b, 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.05s linear;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .cell.selected {
+            background: #ffe2a4;
+            box-shadow: 0 3px 0 #b59a6b;
+            transform: translateY(3px);
+            color: #b45116;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 8px 20px 20px;
+            justify-content: center;
+        }
+
+        button {
+            background: #2d2b26;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 60px;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 0 #12100e;
+            cursor: pointer;
+            transition: 0.07s linear;
+            touch-action: manipulation;
+            flex: 1 0 auto;
+            min-width: 70px;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #12100e;
+        }
+
+        .primary-btn {
+            background: #f09d3c;
+            color: #2d1f0c;
+            font-weight: 800;
+            box-shadow: 0 4px 0 #b4621a;
+        }
+
+        .hint-btn {
+            background: #5f7f6b;
+            box-shadow: 0 4px 0 #2d4538;
+        }
+
+        .info-panel {
+            background: #e7dbbc;
+            margin: 8px 20px 20px;
+            border-radius: 40px;
+            padding: 12px 18px;
+            font-size: 0.85rem;
+            text-align: center;
+            color: #4a3a28;
+        }
+
+        .selection-preview {
+            background: #f3ecce;
+            margin: 0 20px 10px;
+            padding: 8px 12px;
+            border-radius: 60px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 2px;
+            color: #ad6b35;
+        }
+
+        @media (max-width: 500px) {
+            .board { gap: 8px; padding: 20px 12px; }
+            .cell { font-size: 1.6rem; }
+            button { padding: 8px 12px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <div class="level-badge" id="levelDisplay">LEVEL 1</div>
+        <div class="score-area">
+            <div class="score-box">🏆 <span id="scoreValue">0</span> pts</div>
+            <div class="found-counter">📖 <span id="foundCount">0</span> / <span id="totalWordsCount">0</span></div>
+        </div>
+    </div>
+
+    <div class="selection-preview" id="selectionPreview">👉 SWIPE letters 👈</div>
+    <div class="board" id="wordBoard"></div>
+
+    <div class="action-buttons">
+        <button id="clearBtn">🗑️ CLEAR</button>
+        <button id="submitBtn" class="primary-btn">✅ SUBMIT</button>
+        <button id="resetLevelBtn">🔄 RESET</button>
+        <button id="nextLevelBtn">⏩ NEXT</button>
+        <button id="hintBtn" class="hint-btn">💡 HINT (<span id="hintCounter">0</span>/3)</button>
+    </div>
+
+    <div class="info-panel">
+        🔍 Find all words by swiping • Use hints when stuck
+    </div>
+</div>
+
+<script>
+    // ======================== ADMOB INTEGRATION ========================
+    // TEST AD UNIT ID (safe for development) – replace with your real ID before publishing
+    const REWARDED_AD_UNIT_ID = 'ca-app-pub-3940256099942544/5224354917';
+    let isNative = false;
+    let rewardedAdPlugin = null;
+
+    function initAds() {
+        if (typeof window.admob !== 'undefined') {
+            isNative = true;
+            rewardedAdPlugin = window.admob;
+            console.log('AdMob plugin detected (native)');
+        } else if (typeof window.cordova !== 'undefined') {
+            document.addEventListener('deviceready', () => {
+                if (typeof admob !== 'undefined') {
+                    isNative = true;
+                    rewardedAdPlugin = admob;
+                    console.log('AdMob ready after deviceready');
+                }
+            });
+        } else {
+            console.log('Running in browser – using simulated ads for testing');
+        }
+    }
+
+    function showRewardedAd() {
+        return new Promise((resolve) => {
+            if (!isNative || !rewardedAdPlugin) {
+                alert('[TEST MODE] Simulated rewarded ad – real ads will work when app is built with Capacitor/Cordova');
+                setTimeout(() => resolve(true), 500);
+                return;
+            }
+            try {
+                if (typeof rewardedAdPlugin.createRewardedAd === 'function') {
+                    const ad = rewardedAdPlugin.createRewardedAd({ adUnitId: REWARDED_AD_UNIT_ID });
+                    ad.load().then(() => ad.show());
+                    ad.on('reward', () => resolve(true));
+                    ad.on('dismiss', () => resolve(false));
+                    ad.on('error', (err) => { console.error(err); resolve(false); });
+                } 
+                else if (typeof rewardedAdPlugin.prepareRewardedVideo === 'function') {
+                    rewardedAdPlugin.prepareRewardedVideo({ adId: REWARDED_AD_UNIT_ID, autoShow: false });
+                    rewardedAdPlugin.showRewardedVideo(
+                        () => resolve(true),
+                        () => resolve(false),
+                        () => resolve(false)
+                    );
+                } else {
+                    resolve(false);
+                }
+            } catch(e) {
+                console.error('Ad error', e);
+                resolve(false);
+            }
+        });
+    }
+
+    // ======================== DICTIONARY ========================
+    const DICT = new Set([
+        "can","fan","off","oaf","col","con","coo","coon","cool","fool","can","fan","off","oaf","col","con","coo","coon","cool","fool",
+        "cat","dog","sun","fun","run","car","bus","ant","bee","cow","fox","hen","pig","rat","zoo","ice","eye","ear","arm","leg","lip","hip",
+        "red","blue","green","black","white","gold","dark","light","soft","hard","fast","slow","hot","cold","new","old","big","small","long",
+        "far","near","open","close","high","low","deep","wide","thin","thick","rich","poor","clean","dirty","full","empty","bright","dim",
+        "sharp","dull","sweet","sour","fresh","stale","calm","wild","brave","proud","wise","kind","cruel","happy","sad","angry","calm",
+        "game","play","work","life","time","year","month","week","day","night","hour","minute","second","word","letter","number","color",
+        "house","tree","flower","grass","stone","water","fire","wind","earth","cloud","rain","snow","storm","ocean","river","mountain",
+        "forest","desert","island","bridge","tower","castle","queen","king","horse","sheep","goat","duck","eagle","shark","whale","dolphin",
+        "apple","grape","lemon","melon","berry","peach","pear","plum","mango","olive","onion","carrot","tomato","potato","garlic","pepper",
+        "music","peace","power","honor","glory","dream","smile","laugh","dance","sing","write","read","think","learn","teach","build","grow",
+        "cook","clean","sweep","paint","draw","jump","climb","swim","fly","walk","run","drive","ride","push","pull","lift","carry","break",
+        "create","discover","explore","wonder","nature","ancient","modern","simple","complex","perfect","unique","lovely","gentle","fierce",
+        "brighten","deepen","widen","strength","freedom","journey","adventure","mystery","victory","wisdom","courage","honesty","loyalty",
+        "ape","bat","cub","dew","elf","gem","hat","ink","jam","key","log","mud","net","oak","pad","quid","rug","sea","top","urn","vet",
+        "web","xray","yak","zip","ball","bird","book","claw","coin","desk","disk","door","film","fish","frog","gift","hand","hill","joke",
+        "kite","lamp","leaf","moon","nest","note","park","pond","rain","rock","sand","star","tree","wall","wind","wool","zebra","animal",
+        "bridge","candle","dragon","flower","garden","hammer","insect","jacket","kettle","lantern","magnet","needle","orchid","pebble",
+        "quartz","rabbit","sailor","tiger","umbrella","violet","whistle","xylophone","yellow","zipper","amazing","bright","crystal","forest"
+    ]);
+
+    // ======================== GLOBALS ========================
+    let currentLevel = 1;
+    let currentGrid = [];
+    let targetWordsSet = new Set();
+    let allPossibleWords = [];
+    let foundWords = new Set();
+    let score = 0;
+    let hintsUsedThisLevel = 0;
+    let selectedCells = [];
+    let dragging = false;
+    let boardElement = null;
+    let cellsElements = [];
+
+    // DOM elements
+    const levelDisplay = document.getElementById('levelDisplay');
+    const scoreSpan = document.getElementById('scoreValue');
+    const foundCountSpan = document.getElementById('foundCount');
+    const totalWordsSpan = document.getElementById('totalWordsCount');
+    const selectionPreviewSpan = document.getElementById('selectionPreview');
+    const hintCounterSpan = document.getElementById('hintCounter');
+
+    // seeded random
+    function seededRandom(seed) {
+        let s = seed;
+        return function() {
+            s = (s * 1103515245 + 12345) & 0x7fffffff;
+            return s / 0x7fffffff;
+        };
+    }
+
+    const vowels = ['a','e','i','o','u'];
+    const consonants = 'bcdfghjklmnpqrstvwxyz'.split('');
+    function randomLetter(rng, vowelWeight=0.4) {
+        if (rng() < vowelWeight) return vowels[Math.floor(rng() * vowels.length)];
+        else return consonants[Math.floor(rng() * consonants.length)];
+    }
+
+    // find all words in grid
+    function findAllWordsFromGrid(grid) {
+        const rows = 4, cols = 4;
+        const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+        const foundWordsSet = new Set();
+        
+        function dfs(row, col, visited, currentWord) {
+            if (currentWord.length > 6) return;
+            if (currentWord.length >= 3 && DICT.has(currentWord)) {
+                foundWordsSet.add(currentWord);
+            }
+            for (const [dr, dc] of dirs) {
+                const nr = row + dr, nc = col + dc;
+                if (nr>=0 && nr<rows && nc>=0 && nc<cols && !visited.has(`${nr},${nc}`)) {
+                    visited.add(`${nr},${nc}`);
+                    dfs(nr, nc, visited, currentWord + grid[nr][nc]);
+                    visited.delete(`${nr},${nc}`);
+                }
+            }
+        }
+        
+        for (let i=0; i<rows; i++) {
+            for (let j=0; j<cols; j++) {
+                const visited = new Set();
+                visited.add(`${i},${j}`);
+                dfs(i, j, visited, grid[i][j]);
+            }
+        }
+        return Array.from(foundWordsSet).sort();
+    }
+
+    function selectTargetWords(allWordsArray, levelNum, rng) {
+        let minTarget = Math.min(7 + Math.floor(levelNum / 5000), 12);
+        if (minTarget > allWordsArray.length) minTarget = allWordsArray.length;
+        let maxTarget = Math.min(minTarget+2, allWordsArray.length);
+        let targetCount = minTarget + Math.floor(rng() * (maxTarget - minTarget + 1));
+        targetCount = Math.min(targetCount, allWordsArray.length);
+        const shuffled = [...allWordsArray];
+        for (let i=shuffled.length-1;i>0;i--) {
+            const j = Math.floor(rng() * (i+1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return new Set(shuffled.slice(0, targetCount));
+    }
+
+    function generateLevel(levelNum) {
+        const rng = seededRandom(levelNum * 123456789);
+        const grid = Array(4).fill().map(() => Array(4).fill().map(() => randomLetter(rng, 0.42)));
+        let allWords = findAllWordsFromGrid(grid);
+        if (allWords.length < 6) {
+            for (let i=0;i<4;i++) for(let j=0;j<4;j++) grid[i][j] = randomLetter(rng, 0.45);
+            allWords = findAllWordsFromGrid(grid);
+            if (allWords.length < 4) return generateLevel(levelNum+1000);
+        }
+        const targetWords = selectTargetWords(allWords, levelNum, rng);
+        return { grid, allWords, targetWords };
+    }
+
+    function getWordPoints(word) {
+        const len = word.length;
+        if (len === 3) return 10;
+        if (len === 4) return 20;
+        if (len === 5) return 35;
+        return 50;
+    }
+
+    function refreshGameUI() {
+        for (let i=0;i<4;i++) {
+            for (let j=0;j<4;j++) {
+                const idx = i*4+j;
+                const cellDiv = cellsElements[idx];
+                cellDiv.textContent = currentGrid[i][j].toUpperCase();
+                cellDiv.classList.remove('selected','highlight-path');
+            }
+        }
+        foundCountSpan.innerText = foundWords.size;
+        totalWordsSpan.innerText = targetWordsSet.size;
+        scoreSpan.innerText = score;
+        levelDisplay.innerText = `LEVEL ${currentLevel}`;
+        hintCounterSpan.innerText = hintsUsedThisLevel;
+        
+        if (foundWords.size === targetWordsSet.size && targetWordsSet.size>0) {
+            setTimeout(() => {
+                if (confirm(`✨ Amazing! You completed level ${currentLevel}! ✨\nGo to next level?`)) {
+                    nextLevel();
+                }
+            }, 50);
+        }
+        clearSelection();
+    }
+
+    function clearSelection() {
+        selectedCells = [];
+        updateSelectionPreview();
+        for (let cell of cellsElements) cell.classList.remove('selected');
+    }
+
+    function updateSelectionPreview() {
+        if (selectedCells.length===0) {
+            selectionPreviewSpan.innerText = '👉 SWIPE letters 👈';
+            return;
+        }
+        const word = getSelectedWord();
+        selectionPreviewSpan.innerText = word.toUpperCase() + '  (tap submit)';
+    }
+
+    function getSelectedWord() {
+        let word = '';
+        for (let cell of selectedCells) {
+            word += currentGrid[cell.row][cell.col];
+        }
+        return word;
+    }
+
+    function isAdjacent(cellA, cellB) {
+        const dr = Math.abs(cellA.row - cellB.row);
+        const dc = Math.abs(cellA.col - cellB.col);
+        return dr <= 1 && dc <= 1 && !(dr===0 && dc===0);
+    }
+
+    function tryAddToSelection(row, col) {
+        if (selectedCells.length === 0) {
+            selectedCells.push({row, col});
+            updateSelectionPreview();
+            highlightSelectedCells();
+            return true;
+        }
+        const last = selectedCells[selectedCells.length-1];
+        if (!isAdjacent(last, {row, col})) return false;
+        if (selectedCells.some(cell => cell.row===row && cell.col===col)) return false;
+        selectedCells.push({row, col});
+        updateSelectionPreview();
+        highlightSelectedCells();
+        return true;
+    }
+
+    function highlightSelectedCells() {
+        for (let i=0;i<cellsElements.length;i++) cellsElements[i].classList.remove('selected');
+        for (let sel of selectedCells) {
+            const idx = sel.row*4 + sel.col;
+            cellsElements[idx].classList.add('selected');
+        }
+    }
+
+    function submitWord() {
+        if (selectedCells.length < 3) {
+            selectionPreviewSpan.innerText = '⚠️ need 3+ letters!';
+            setTimeout(()=>updateSelectionPreview(), 800);
+            return;
+        }
+        const word = getSelectedWord().toLowerCase();
+        if (!targetWordsSet.has(word)) {
+            selectionPreviewSpan.innerText = `❌ "${word.toUpperCase()}" not in target list`;
+            setTimeout(()=>updateSelectionPreview(), 1000);
+            clearSelection();
+            return;
+        }
+        if (foundWords.has(word)) {
+            selectionPreviewSpan.innerText = `⏳ already found "${word.toUpperCase()}"`;
+            setTimeout(()=>updateSelectionPreview(), 1000);
+            clearSelection();
+            return;
+        }
+        foundWords.add(word);
+        score += getWordPoints(word);
+        refreshGameUI();
+        selectionPreviewSpan.innerText = `🎉 +${getWordPoints(word)}  ${word.toUpperCase()}! 🎉`;
+        setTimeout(()=>updateSelectionPreview(), 1000);
+        clearSelection();
+    }
+
+    function resetLevel() {
+        foundWords.clear();
+        score = 0;
+        hintsUsedThisLevel = 0;
+        clearSelection();
+        refreshGameUI();
+        selectionPreviewSpan.innerText = '🔄 Level reset!';
+        setTimeout(()=>updateSelectionPreview(), 1000);
+    }
+
+    function nextLevel() {
+        currentLevel++;
+        if (currentLevel > 1000000) currentLevel = 1;
+        loadLevel(currentLevel);
+    }
+
+    function loadLevel(levelNum) {
+        const { grid, allWords, targetWords } = generateLevel(levelNum);
+        currentGrid = grid;
+        allPossibleWords = allWords;
+        targetWordsSet = targetWords;
+        foundWords.clear();
+        score = 0;
+        hintsUsedThisLevel = 0;
+        clearSelection();
+        refreshGameUI();
+        selectionPreviewSpan.innerText = `🌟 LEVEL ${levelNum} READY! 🌟`;
+        setTimeout(()=>updateSelectionPreview(), 1500);
+    }
+
+    async function giveHint() {
+        const remaining = Array.from(targetWordsSet).filter(w => !foundWords.has(w));
+        if (remaining.length === 0) {
+            alert("🎉 You already found all words! Go next level.");
+            return;
+        }
+        if (hintsUsedThisLevel < 3) {
+            const randomWord = remaining[Math.floor(Math.random() * remaining.length)];
+            alert(`✨ FREE HINT (${2-hintsUsedThisLevel} left) ✨\nWord: "${randomWord.toUpperCase()}"`);
+            hintsUsedThisLevel++;
+            hintCounterSpan.innerText = hintsUsedThisLevel;
+        } else {
+            const reward = await showRewardedAd();
+            if (reward) {
+                const randomWord = remaining[Math.floor(Math.random() * remaining.length)];
+                alert(`🎁 Thanks for watching! Your hint: "${randomWord.toUpperCase()}" 🎁`);
+            } else {
+                alert("Ad not completed or failed. No hint this time.");
+            }
+        }
+        refreshGameUI();
+    }
+
+    function buildBoard() {
+        boardElement = document.getElementById('wordBoard');
+        boardElement.innerHTML = '';
+        cellsElements = [];
+        for (let i=0;i<16;i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            boardElement.appendChild(cell);
+            cellsElements.push(cell);
+        }
+        for (let i=0; i<cellsElements.length; i++) {
+            const cell = cellsElements[i];
+            const row = Math.floor(i/4);
+            const col = i%4;
+            cell.addEventListener('mousedown', (e) => { e.preventDefault(); dragging = true; clearSelection(); tryAddToSelection(row, col); });
+            cell.addEventListener('mouseenter', () => { if (dragging) tryAddToSelection(row, col); });
+            cell.addEventListener('mouseup', () => { if (dragging) { dragging=false; submitWord(); } });
+            cell.addEventListener('touchstart', (e) => { e.preventDefault(); dragging = true; clearSelection(); tryAddToSelection(row, col); });
+            cell.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (elem && elem.classList && elem.classList.contains('cell')) {
+                    const idx = Array.from(boardElement.children).indexOf(elem);
+                    if (idx !== -1) {
+                        const r = Math.floor(idx/4), c = idx%4;
+                        tryAddToSelection(r, c);
+                    }
+                }
+            });
+            cell.addEventListener('touchend', (e) => { e.preventDefault(); if (dragging) { dragging=false; submitWord(); } });
+        }
+        window.addEventListener('mouseup', () => { if(dragging) { dragging=false; submitWord(); } });
+    }
+
+    function init() {
+        initAds();
+        buildBoard();
+        loadLevel(1);
+        document.getElementById('clearBtn').onclick = () => clearSelection();
+        document.getElementById('submitBtn').onclick = () => submitWord();
+        document.getElementById('resetLevelBtn').onclick = () => resetLevel();
+        document.getElementById('nextLevelBtn').onclick = () => nextLevel();
+        document.getElementById('hintBtn').onclick = () => giveHint();
+    }
+    init();
+</script>
+</body>
+</html>
